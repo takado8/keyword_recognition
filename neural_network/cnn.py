@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 
 
 # Navigate your dataset directory and process the data
-dataset_path = "path_to_your_dataset"
+dataset_path = "../data"
 labels = []
 features = []
 
@@ -21,7 +21,8 @@ for label in os.listdir(dataset_path):
         file_path = os.path.join(subfolder_path, file_name)
 
         # Extract MFCC features from the audio file
-        mfccs = generate_mfcc(file_path, length_seconds=2)
+        print(f'generating MFCC for {file_path}')
+        mfccs = generate_mfcc(file_path, length_seconds=1)
 
         if mfccs is not None:
             features.append(mfccs)
