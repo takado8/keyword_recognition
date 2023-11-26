@@ -23,7 +23,7 @@ def generate_mfcc(filepath, length_seconds):
     return mfccs
 
 
-def pot_MFCC(mfcc, sample_rate):
+def plot_MFCC(mfcc, sample_rate):
     plt.figure(figsize=(10, 4))
     librosa.display.specshow(mfcc, x_axis='time', sr=sample_rate)
     plt.colorbar()
