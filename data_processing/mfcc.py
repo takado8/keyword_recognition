@@ -30,3 +30,14 @@ def plot_MFCC(mfcc, sample_rate):
     plt.title('MFCC')
     plt.tight_layout()
     plt.show()
+
+
+if __name__ == '__main__':
+    import os
+    mfccs = []
+    for file in os.listdir("../data/eryk"):
+        mfccs.append(generate_mfcc(f"../data/eryk/{file}", 1))
+
+    for mfcc in mfccs:
+        plot_MFCC(mfcc, 44100)
+
