@@ -16,7 +16,7 @@ def prepare_training_data(dataset_path="../data"):
             file_path = os.path.join(subfolder_path, file_name)
 
             print(f'generating MFCC for {file_path}')
-            mfccs = generate_mfcc(file_path, length_seconds=1)
+            mfccs = generate_mfcc(file_path, length_seconds=0.5)
 
             if mfccs is not None:
                 features.append(mfccs)

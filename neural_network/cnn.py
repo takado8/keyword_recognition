@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
@@ -30,15 +32,45 @@ def compile_and_fit(model, x_train, x_test, y_train, y_test):
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
-    model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_test, y_test))
+    model.fit(x_train, y_train, batch_size=1, epochs=20, validation_data=(x_test, y_test))
     score = model.evaluate(x_test, y_test, verbose=0)
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
     return model
 
 
+def predict_directory(directory, model_path):
+    model = load_model(model_path)
+    # nb_of_positives = os.listdir(f'{directory}/{0}')
+    correct = 0
+    incorrect = 0
+    for i in range(2):
+        dirpath = f'{directory}/{i}'
+        for file in os.listdir(dirpath):
+            x = load_input(filepath=f'{dirpath}/{file}')
+            result = model.predict(x, verbose=0)[0]
+            prediction = np.argmax(result)
+            percent = round(result[prediction] * 100, 2)
+            if prediction == 0 and percent < 95:
+                prediction = 1
+            is_correct = prediction == i
+            if is_correct:
+                correct += 1
+            else:
+                incorrect +=1
+            print(f'{file}: {percent}% {is_correct}')
+    print(f'correct: {correct}\nincorrect: {incorrect}'
+          f'\naccuracy: {round(correct/(correct+incorrect)*100,2)}%')
+
+
 if __name__ == '__main__':
-    model = load_model('test_model.h5')
-    x = load_input(filepath='../data/zero.wav')
-    prediction = np.argmax(model.predict(x))
-    print(prediction)
+    #
+    # x_train, x_test, labels_train, labels_test = (
+    #     load_data('../data/eryk_training', 0.15))
+    # input_shape = (x_train.shape[1], x_train.shape[2], 1)
+    # output_shape = labels_train.shape[1]
+    # model = create_model(input_shape, output_shape)
+    # model = compile_and_fit(model, x_train, x_test, labels_train, labels_test)
+    # save_model(model, 'eryk.h5')
+    predict_directory(directory='../data/eryk_training', model_path='eryk.h5')
+

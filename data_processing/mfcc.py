@@ -17,9 +17,12 @@ def crop_or_pad(signal, samples_length):
 
 def generate_mfcc(filepath, length_seconds):
     signal, sample_rate = librosa.load(filepath, sr=None)
-    desired_length_in_samples = length_seconds * sample_rate
+    target_sample_rate = 44100
+    if sample_rate != target_sample_rate:
+        signal = librosa.resample(y=signal, orig_sr=sample_rate, target_sr=target_sample_rate)
+    desired_length_in_samples = int(length_seconds * target_sample_rate)
     signal = crop_or_pad(signal, desired_length_in_samples)
-    mfccs = librosa.feature.mfcc(y=signal, sr=sample_rate, n_mfcc=13)
+    mfccs = librosa.feature.mfcc(y=signal, sr=target_sample_rate, n_mfcc=13)
     return mfccs
 
 

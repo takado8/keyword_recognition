@@ -18,7 +18,7 @@ def load_data(dataset_path, test_size=0.2):
 
 
 def load_input(filepath):
-    mfccs = generate_mfcc(filepath, 1)
+    mfccs = generate_mfcc(filepath, 0.5)
 
     # Add both the batch dimension and the channel dimension
     x = np.expand_dims(mfccs, axis=0)

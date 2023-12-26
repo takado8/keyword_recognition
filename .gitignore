@@ -153,3 +153,4 @@ cython_debug/
 data/
 *.wav
 *.mp3
+*.h5
