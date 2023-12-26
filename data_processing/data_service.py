@@ -17,9 +17,16 @@ def load_data(dataset_path, test_size=0.2):
     return x_train, x_test, labels_train, labels_test
 
 
-def load_input(filepath):
+def load_input_from_file(filepath):
     mfccs = generate_mfcc(filepath, 0.5)
 
+    # Add both the batch dimension and the channel dimension
+    x = np.expand_dims(mfccs, axis=0)
+    x = np.expand_dims(x, axis=-1)
+    return x
+
+
+def load_input(mfccs):
     # Add both the batch dimension and the channel dimension
     x = np.expand_dims(mfccs, axis=0)
     x = np.expand_dims(x, axis=-1)
