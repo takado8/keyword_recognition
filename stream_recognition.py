@@ -1,4 +1,3 @@
-import multiprocessing
 import threading
 import queue
 import librosa.display
@@ -9,14 +8,14 @@ from keras.models import load_model
 
 length_seconds = 0.5
 target_sample_rate = 44100
-batch_size = 5
+batch_size = 3
 frames_per_buffer = 1024
 
 
 class StreamRecognition:
     def __init__(self):
         print('loading model...')
-        self.model = load_model('neural_network/eryk2.h5')
+        self.model = load_model('neural_network/eryk500.h5')
 
     def recognize(self, frames):
         desired_length_in_samples = int(length_seconds * target_sample_rate)
@@ -38,14 +37,16 @@ class StreamRecognition:
         # Perform batch prediction
         results = self.model.predict(x_batch, verbose=0, batch_size=len(x_batch))
 
-        for i, result in enumerate(results):
+        for result in results:
             prediction = np.argmax(result)
-            percent = round(result[prediction] * 100, 2)
-            if prediction == 0 and percent < 95:
-                prediction = 1
+            percent = int(round(result[prediction] * 100, 0))
             if prediction == 0:
-                label = 'Keyword! <<<<<' if prediction == 0 else 'none'
-                print(f'Snapshot {i}: {label} {percent}%')
+                label = 'word'
+            elif prediction == 1:
+                label = 'noise'
+            else:
+                label = 'Keyword! <<<<<'
+            print(f'{percent}% {label} ')
 
     def stream_recognition(self):
         p = pyaudio.PyAudio()
@@ -122,13 +123,12 @@ class StreamRecognition:
 
         try:
             while True:
-                print("Recording...")
                 frames = []
+                # print("Recording...")
                 for i in range(0, int(target_sample_rate / frames_per_buffer * length_seconds * 2)):
                     data = stream.read(frames_per_buffer)
                     frames.append(data)
-                print("Finished recording.")
-
+                # print('done.')
                 # Offload processing to another thread
                 threading.Thread(target=self.recognize, args=(frames,)).start()
 
