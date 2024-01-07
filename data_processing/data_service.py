@@ -5,8 +5,8 @@ from data_processing.prepare_training_data import prepare_training_data
 from sklearn.model_selection import train_test_split
 
 
-def load_data(dataset_path, test_size=0.2):
-    features, labels = prepare_training_data(dataset_path)
+def load_data(dataset_path, test_size=0.2, length_seconds=0.7):
+    features, labels = prepare_training_data(length_seconds=length_seconds, dataset_path=dataset_path)
 
     mfccs_train, mfccs_test, labels_train, labels_test = \
         train_test_split(features, labels, test_size=test_size)
@@ -17,8 +17,8 @@ def load_data(dataset_path, test_size=0.2):
     return x_train, x_test, labels_train, labels_test
 
 
-def load_input_from_file(filepath):
-    mfccs = generate_mfcc(filepath, 0.5)
+def load_input_from_file(filepath,length_seconds):
+    mfccs = generate_mfcc(filepath, length_seconds)
 
     # Add both the batch dimension and the channel dimension
     x = np.expand_dims(mfccs, axis=0)

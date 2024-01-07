@@ -5,7 +5,7 @@ from keras.utils import to_categorical
 from data_processing.mfcc import generate_mfcc
 
 
-def prepare_training_data(dataset_path="../data"):
+def prepare_training_data(length_seconds, dataset_path="../data"):
     labels = []
     features = []
 
@@ -16,7 +16,7 @@ def prepare_training_data(dataset_path="../data"):
             file_path = os.path.join(subfolder_path, file_name)
 
             print(f'generating MFCC for {file_path}')
-            mfccs = generate_mfcc(file_path, length_seconds=0.5)
+            mfccs = generate_mfcc(file_path, length_seconds=length_seconds)
 
             if mfccs is not None:
                 features.append(mfccs)

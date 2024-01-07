@@ -28,54 +28,110 @@ def create_model(input_shape, output_shape):
     return model
 
 
-def compile_and_fit(model, x_train, x_test, y_train, y_test):
+def compile_and_fit(model, x_train, x_test, y_train, y_test, epochs=15):
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
-    model.fit(x_train, y_train, batch_size=1, epochs=20, validation_data=(x_test, y_test))
+        optimizer='adam',
+        metrics=['accuracy'])
+    model.fit(x_train, y_train, batch_size=1, epochs=epochs, validation_data=(x_test, y_test))
     score = model.evaluate(x_test, y_test, verbose=0)
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
     return model
 
 
-def predict_directory(directory, model_path):
+def predict_directory(directory, model_path, length_seconds, segregate=False):
     model = load_model(model_path)
     # nb_of_positives = os.listdir(f'{directory}/{0}')
     correct = 0
     incorrect = 0
-    for i in range(2):
+    moved_to_0 = 0
+    moved_to_1 = 0
+    for i in range(len(os.listdir(directory))):
         dirpath = f'{directory}/{i}'
         for file in os.listdir(dirpath):
-            x = load_input_from_file(filepath=f'{dirpath}/{file}')
+            x = load_input_from_file(filepath=f'{dirpath}/{file}', length_seconds=length_seconds)
             result = model.predict(x, verbose=0)[0]
             prediction = np.argmax(result)
             percent = round(result[prediction] * 100, 2)
-            if prediction == 0 and percent < 95:
-                prediction = 1
+            # if prediction == 0 and percent < 95:
+            #     prediction = 1
             is_correct = prediction == i
             if is_correct:
                 correct += 1
             else:
-                incorrect +=1
-            print(f'{file}: {percent}% {is_correct}')
+                incorrect += 1
+                if segregate and percent > 60:
+                    not_i = int(not bool(i))
+                    src = f'{dirpath}/{file}'
+                    target = f'{directory}/{not_i}/{file}'
+                    try:
+                        os.rename(src, target)
+                        if not_i:
+                            moved_to_1 += 1
+                        else:
+                            moved_to_0 += 1
+                        print(f'{moved_to_0 + moved_to_1}. moving {file} to {target}')
+                    except FileExistsError:
+                        print(f'file exists {file}')
+                        os.remove(src)
+            arrow = '<<<<<<<<<' if not is_correct else ''
+            print(f'{file}: {percent}% {is_correct}{arrow}')
     print(f'correct: {correct}\nincorrect: {incorrect}'
-          f'\naccuracy: {round(correct/(correct+incorrect)*100,2)}%')
+          f'\naccuracy: {round(correct / (correct + incorrect) * 100, 2)}%')
+    print(f'moved to 0: {moved_to_0}\nmoved to 1: {moved_to_1}')
 
 
-def predict_stream(model_path):
+def segregate_directory(directory, model_path, length_seconds=0.5):
     model = load_model(model_path)
+    output_shape = model.layers[-1].output_shape[-1]
+    print(f'Output shape: {output_shape}')
+    files = os.listdir(directory)
+    n = len(files)
+    print(f'Found {n} files.')
+    results = {}
+    for i in range(output_shape):
+        subdir = f'{directory}/{i}'
+        if not os.path.isdir(subdir):
+            os.mkdir(subdir)
+            print(f'Directory created: {subdir}')
 
+    i = 0
+    for file in files:
+        i += 1
+        x = load_input_from_file(filepath=f'{directory}/{file}', length_seconds=length_seconds)
+        result = model.predict(x, verbose=0)[0]
+        prediction = np.argmax(result)
+        percent = round(result[prediction] * 100, 2)
+
+        if percent > 95:
+            src = f'{directory}/{file}'
+            target = f'{directory}/{prediction}/{file}'
+            try:
+                os.rename(src, target)
+                print(f'{i}/{n}. Moving {file} to {target}')
+                if prediction in results:
+                    results[prediction] += 1
+                else:
+                    results[prediction] = 1
+            except FileExistsError:
+                print(f'File exists {target}. Removing source.')
+                os.remove(src)
+    for label in results:
+        print(f'{label}: {results[label]}')
+    unmatched = n - sum(results.values())
+    print(f'Unmatched: {unmatched}')
 
 
 if __name__ == '__main__':
-    #
-    # x_train, x_test, labels_train, labels_test = (
-    #     load_data('../data/eryk_training', 0.001))
-    # input_shape = (x_train.shape[1], x_train.shape[2], 1)
-    # output_shape = labels_train.shape[1]
-    # model = create_model(input_shape, output_shape)
-    # model = compile_and_fit(model, x_train, x_test, labels_train, labels_test)
-    # save_model(model, 'eryk2.h5')
-    predict_directory(directory='../data/eryk_training', model_path='eryk2.h5')
+    x_train, x_test, labels_train, labels_test = (
+        load_data('../data/eryk_training_2', 0.001, length_seconds=0.5))
+    input_shape = (x_train.shape[1], x_train.shape[2], 1)
+    output_shape = labels_train.shape[1]
+    model = create_model(input_shape, output_shape)
+    model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12)
+    save_model(model, 'eryk500.h5')
 
+    predict_directory(directory='../data/eryk_training_2',
+        model_path='eryk500.h5', length_seconds=0.5, segregate=False)
+
+    # segregate_directory(directory='../data/segregation', model_path='eryk500_noise7.h5')

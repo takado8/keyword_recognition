@@ -53,66 +53,78 @@ def auto_crop_directory(input_directory, output_directory):
     matches = 0
     if not os.path.isdir(output_directory):
         os.mkdir(output_directory)
-    durations = [500, 400]
-    for duration in durations:
-        print(f'duration: {duration}')
-        for chunk_nb in range(max_chunks):
-            print(f'chunk: {chunk_nb}')
-            for i in range(5):
-                threshold = silence_threshold + i * 10
-                print(f'threshold: {threshold}')
-                for file in os.listdir(input_directory):
-                    input_path = f"{input_directory}/{file}"
-                    output_path = f"{temp_results_dir}/{file}"
-                    result = auto_crop_mp3(input_path, output_path,
-                        chunk=chunk_nb,
-                        silence_thresh=threshold,
-                        duration=duration)
-                    if result:
-                        txt = speech_to_txt(output_path)
-                        if txt == 'eryk':
-                            matches += 1
-                            print(f"match {matches}: {output_path}")
-                            os.rename(output_path, f'{output_directory}/{file}')
-                            os.remove(input_path)
+    duration = 500
+    for chunk_nb in range(max_chunks):
+        print(f'chunk: {chunk_nb}')
+        for i in range(4):
+            threshold = silence_threshold + i * 10
+            print(f'threshold: {threshold}')
+            for file in os.listdir(input_directory):
+                input_path = f"{input_directory}/{file}"
+                output_path = f"{temp_results_dir}/{file}"
+                result = auto_crop_mp3(input_path, output_path,
+                    chunk=chunk_nb,
+                    silence_thresh=threshold,
+                    duration=duration)
+                if result:
+                    txt = speech_to_txt(output_path)
+                    if txt == 'eryk':
+                        matches += 1
+                        print(f"match {matches}: {output_path}")
+                        os.rename(output_path, f'{output_directory}/{file}')
+                        os.remove(input_path)
 
-                for file in os.listdir(temp_results_dir):
-                    os.remove(f'{temp_results_dir}/{file}')
+            for file in os.listdir(temp_results_dir):
+                os.remove(f'{temp_results_dir}/{file}')
 
 
-def crop_directory(input_directory, output_directory, duration):
+def crop_directory(input_directory, output_directory, duration, chunk=0):
+    if not os.path.isdir(output_directory):
+        os.mkdir(output_directory)
+
+    i = 0
+    n = len(os.listdir(input_directory))
     for file in os.listdir(input_directory):
-        auto_crop_mp3(f'{input_directory}/{file}', f'{output_directory}/{file}',
-        duration=duration)
+        i += 1
+        print(f'Cropping {file} {i}/{n}')
+        newname = file.replace('.mp3', f'_{chunk}')
+        newname = newname + '.mp3'
+        auto_crop_mp3(f'{input_directory}/{file}',
+            f'{output_directory}/{newname}',
+        duration=duration, chunk=chunk)
 
 
 if __name__ == '__main__':
-    lengths = {400: 33, 500: 109, 'other': 69}
-    # auto_crop_directory('../data/eryk', '../data/eryk_cropped3')
-    directory = '../data/unmatched'
+    # auto_crop_directory('../data/eryk', '../data/eryk_cropped')
+    for i in range(4):
+        crop_directory('../data/unmatched', '../data/unmatched_cropped',
+            duration=500, chunk=i)
 
-    for file in os.listdir(directory):
-        if 400 in lengths:
-            duration = 400
-            lengths[400] -= 1
-            if lengths[400] <= 0:
-                del lengths[400]
-        elif 500 in lengths:
-            duration = 500
-            lengths[500] -= 1
-            if lengths[500] <= 0:
-                del lengths[500]
-        elif 'other' in lengths:
-            duration = random.randint(430, 500)
-            lengths['other'] -= 1
-            if lengths['other'] <= 0:
-                del lengths['other']
-        else:
-            print('break.')
-            break
-        auto_crop_mp3(f'{directory}/{file}', f'../data/eryk_training/noise/{file}',
-        duration=duration
-    )
+    # lengths = {400: 33, 500: 109, 'other': 69}
+    # directory = '../data/unmatched'
+    #
+    # for file in os.listdir(directory):
+    #     if 400 in lengths:
+    #         duration = 400
+    #         lengths[400] -= 1
+    #         if lengths[400] <= 0:
+    #             del lengths[400]
+    #     elif 500 in lengths:
+    #         duration = 500
+    #         lengths[500] -= 1
+    #         if lengths[500] <= 0:
+    #             del lengths[500]
+    #     elif 'other' in lengths:
+    #         duration = random.randint(430, 500)
+    #         lengths['other'] -= 1
+    #         if lengths['other'] <= 0:
+    #             del lengths['other']
+    #     else:
+    #         print('break.')
+    #         break
+    #     auto_crop_mp3(f'{directory}/{file}', f'../data/eryk_training/noise/{file}',
+    #     duration=duration
+    # )
 
     # crop_directory('../data/eryk', f'../data/temp', duration=)
     # print_mp3_length('../data/eryk_training/eryk')
