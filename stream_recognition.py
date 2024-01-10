@@ -15,7 +15,7 @@ frames_per_buffer = 1024
 class StreamRecognition:
     def __init__(self):
         print('loading model...')
-        self.model = load_model('neural_network/eryk500.h5')
+        self.model = load_model('neural_network/eryk_newnet2.h5')
 
     def recognize(self, frames):
         desired_length_in_samples = int(length_seconds * target_sample_rate)
@@ -40,12 +40,12 @@ class StreamRecognition:
         for result in results:
             prediction = np.argmax(result)
             percent = int(round(result[prediction] * 100, 0))
-            if prediction == 0:
-                label = 'word'
-            elif prediction == 1:
+            if prediction == 2:
                 label = 'noise'
-            else:
+            elif prediction == 1 and percent > 95:
                 label = 'Keyword! <<<<<'
+            else:
+                label = 'word'
             print(f'{percent}% {label} ')
 
     def stream_recognition(self):

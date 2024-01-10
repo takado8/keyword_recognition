@@ -16,23 +16,29 @@ print(f'GPUs: {gpus}')
 
 def create_model(input_shape, output_shape):
     model = Sequential()
-    model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(Conv2D(filters=32, kernel_size=(2, 3), activation='relu', input_shape=input_shape))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu'))
+    model.add(Conv2D(filters=64, kernel_size=(2, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(filters=128, kernel_size=(2, 3), activation='relu'))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
+    model.add(Dense(512, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(0.5))
     model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.5))
     model.add(Dense(output_shape, activation='softmax'))
     return model
 
 
-def compile_and_fit(model, x_train, x_test, y_train, y_test, epochs=15):
+def compile_and_fit(model, x_train, x_test, y_train, y_test, epochs=15, batch_size=3):
     model.compile(loss='categorical_crossentropy',
         optimizer='adam',
         metrics=['accuracy'])
-    model.fit(x_train, y_train, batch_size=1, epochs=epochs, validation_data=(x_test, y_test))
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
     score = model.evaluate(x_test, y_test, verbose=0)
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
@@ -53,8 +59,8 @@ def predict_directory(directory, model_path, length_seconds, segregate=False):
             result = model.predict(x, verbose=0)[0]
             prediction = np.argmax(result)
             percent = round(result[prediction] * 100, 2)
-            # if prediction == 0 and percent < 95:
-            #     prediction = 1
+            # if prediction == 1 and percent < 95:
+            #     prediction = 0
             is_correct = prediction == i
             if is_correct:
                 correct += 1
@@ -123,15 +129,19 @@ def segregate_directory(directory, model_path, length_seconds=0.5):
 
 
 if __name__ == '__main__':
+    #
     x_train, x_test, labels_train, labels_test = (
-        load_data('../data/eryk_training_2', 0.001, length_seconds=0.5))
+        load_data('../data/eryk_training_2', 0.05, length_seconds=0.5,
+            use_augmentation=True))
     input_shape = (x_train.shape[1], x_train.shape[2], 1)
     output_shape = labels_train.shape[1]
     model = create_model(input_shape, output_shape)
-    model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12)
-    save_model(model, 'eryk500.h5')
+    model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12, batch_size=3)
+    save_model(model, 'eryk_newnet3.h5')
 
     predict_directory(directory='../data/eryk_training_2',
-        model_path='eryk500.h5', length_seconds=0.5, segregate=False)
+        model_path='eryk_newnet3.h5', length_seconds=0.5, segregate=False)
 
     # segregate_directory(directory='../data/segregation', model_path='eryk500_noise7.h5')
+    model = load_model('eryk_newnet3.h5')
+    model.summary()
