@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 import tensorflow as tf
 from data_processing.data_service import load_data, load_input_from_file
 from keras.models import load_model, save_model
@@ -16,15 +16,20 @@ print(f'GPUs: {gpus}')
 
 def create_model(input_shape, output_shape):
     model = Sequential()
-    model.add(Conv2D(filters=32, kernel_size=(2, 3), activation='relu', input_shape=input_shape))
+    model.add(Conv2D(filters=16, kernel_size=(2, 2), activation='relu', input_shape=input_shape))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=64, kernel_size=(2, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=128, kernel_size=(2, 3), activation='relu'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(filters=32, kernel_size=(2, 2), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(1, 2)))
+    model.add(Conv2D(filters=64, kernel_size=(2, 2), activation='relu'))
+    model.add(BatchNormalization())
+
     # model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(512, activation='relu'))
+    model.add(BatchNormalization())
+
     model.add(Dropout(0.5))
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.5))
@@ -128,20 +133,43 @@ def segregate_directory(directory, model_path, length_seconds=0.5):
     print(f'Unmatched: {unmatched}')
 
 
+def save_inputs(directory, x, x_test, y, y_test):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    np.save(f'{directory}/x_train.npy', x)
+    np.save(f'{directory}/x_test.npy', x_test)
+    np.save(f'{directory}/labels_train.npy', y)
+    np.save(f'{directory}/labels_test.npy', y_test)
+
+
+def load_inputs(directory):
+    x = np.load(f'{directory}/x_train.npy')
+    x_test = np.load(f'{directory}/x_test.npy')
+    y = np.load(f'{directory}/labels_train.npy')
+    y_test = np.load(f'{directory}/labels_test.npy')
+    return x, x_test, y, y_test
+
+
 if __name__ == '__main__':
-    #
+    inputs_dir = '../data/30words_inputs_augmented'
+
     x_train, x_test, labels_train, labels_test = (
-        load_data('../data/eryk_training_2', 0.05, length_seconds=0.5,
+        load_data('../data/30 words', 0.15, length_seconds=1,
             use_augmentation=True))
+    save_inputs(inputs_dir, x_train, x_test, labels_train, labels_test)
+
+    # x_train, x_test, labels_train, labels_test = load_inputs(inputs_dir)
+
     input_shape = (x_train.shape[1], x_train.shape[2], 1)
     output_shape = labels_train.shape[1]
     model = create_model(input_shape, output_shape)
-    model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12, batch_size=3)
-    save_model(model, 'eryk_newnet3.h5')
-
-    predict_directory(directory='../data/eryk_training_2',
-        model_path='eryk_newnet3.h5', length_seconds=0.5, segregate=False)
+    model.summary()
+    model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12, batch_size=32)
+    save_model(model, '30words.h5')
+    #
+    # predict_directory(directory='../data/eryk_training_2',
+    #     model_path='eryk_newnet3.h5', length_seconds=0.5, segregate=False)
 
     # segregate_directory(directory='../data/segregation', model_path='eryk500_noise7.h5')
-    model = load_model('eryk_newnet3.h5')
-    model.summary()
+    # model = load_model('eryk_newnet3.h5')
+    # model.summary()

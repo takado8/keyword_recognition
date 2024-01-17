@@ -3,6 +3,10 @@ import librosa.display
 import numpy as np
 
 
+# target_sample_rate = 44100
+target_sample_rate = 16000
+
+
 def crop_or_pad(signal, samples_length):
     # Crop or pad the signal
     if len(signal) > samples_length:
@@ -17,8 +21,8 @@ def crop_or_pad(signal, samples_length):
 
 def generate_mfcc(filepath, length_seconds):
     signal, sample_rate = librosa.load(filepath, sr=None)
-    target_sample_rate = 44100
     if sample_rate != target_sample_rate:
+        print(f'changing sample rate: {sample_rate} to {target_sample_rate}')
         signal = librosa.resample(y=signal, orig_sr=sample_rate, target_sr=target_sample_rate)
     desired_length_in_samples = int(length_seconds * target_sample_rate)
     signal = crop_or_pad(signal, desired_length_in_samples)
@@ -28,7 +32,6 @@ def generate_mfcc(filepath, length_seconds):
 
 def generate_augmented_mfccs(filepath, length_seconds):
     signal, sample_rate = librosa.load(filepath, sr=None)
-    target_sample_rate = 44100
     if sample_rate != target_sample_rate:
         signal = librosa.resample(y=signal, orig_sr=sample_rate, target_sr=target_sample_rate)
     desired_length_in_samples = int(length_seconds * target_sample_rate)
@@ -71,5 +74,5 @@ if __name__ == '__main__':
         mfccs.append(generate_mfcc(f"../data/eryk/{file}", 1))
 
     for mfcc in mfccs:
-        plot_MFCC(mfcc, 44100)
+        plot_MFCC(mfcc, target_sample_rate)
 
