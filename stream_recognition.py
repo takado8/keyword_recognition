@@ -4,8 +4,12 @@ import queue
 import librosa.display
 import numpy as np
 import pyaudio
+from pydub import AudioSegment
+
 from data_processing.mfcc import crop_or_pad
 from keras.models import load_model
+import wave
+import audioop
 
 recording_time_multiplier = 2
 input_length_seconds = 1
@@ -14,6 +18,7 @@ target_sample_rate = 16000
 batch_size = 8
 frames_per_buffer = 1024
 labels_dir = 'data/30 words'
+silence_length = 35
 
 
 class StreamRecognition:
@@ -23,6 +28,8 @@ class StreamRecognition:
         self.labels = {}
         self.assign_labels()
         self.previous_ending_frames = None
+        self.is_recording_enabled = False
+        self.threshold_percent = 0.1
 
     def assign_labels(self):
         i = 0
@@ -62,9 +69,14 @@ class StreamRecognition:
             prediction = np.argmax(result)
             percent = int(round(result[prediction] * 100, 0))
             label = self.labels[prediction]
-            print(f'{percent}% {label} ')
+            if not self.is_recording_enabled:
+                print(f'{percent}% {label} ')
+                if label == 'marvin' and percent > 95:
+                    print('Keyword detected!')
+                    self.is_recording_enabled = True
+                    self.previous_ending_frames.clear()
 
-    def stream_recognition_async(self):
+    def stream_recognition_async2(self):
         p = pyaudio.PyAudio()
         stream = p.open(format=pyaudio.paInt16,
             channels=1,
@@ -82,6 +94,8 @@ class StreamRecognition:
                     frames.append(data)
                 # print('done.')
                 # Offload processing to another thread
+                if self.is_recording_enabled:
+                    print("Recording...")
                 threading.Thread(target=self.recognize, args=(frames,)).start()
 
         except KeyboardInterrupt:
@@ -90,6 +104,76 @@ class StreamRecognition:
             stream.stop_stream()
             stream.close()
             p.terminate()
+
+    def stream_recognition_async(self):
+        p = pyaudio.PyAudio()
+        stream = p.open(format=pyaudio.paInt16,
+            channels=1,
+            rate=target_sample_rate,
+            input=True,
+            frames_per_buffer=frames_per_buffer)
+        try:
+            previous_frames = []
+            recorded_frames = []
+            silent_chunks = 0
+            while True:
+                frames = []
+                volume_list = []
+                for i in range(0, int(target_sample_rate / frames_per_buffer * input_length_seconds *
+                                      recording_time_multiplier)):
+                    data = stream.read(frames_per_buffer)
+                    frames.append(data)
+                    if self.is_recording_enabled:
+                        print('Recording...')
+                        rms = audioop.rms(data, 2)  # Get RMS value to determine volume
+                        current_volume = rms / 32768  # Normalized RMS as a volume ratio
+                        volume_list.append(current_volume)
+                        avg_volume = sum(volume_list) / len(volume_list)
+                        if avg_volume < self.threshold_percent:
+                            # Finish recording when volume drops
+                            silent_chunks += 1
+                            if silent_chunks >= silence_length:
+                                silent_chunks = 0
+                                print("Recording stopped due to low volume...")
+                                self.is_recording_enabled = False
+                        else:
+                            silent_chunks = 0
+                if self.is_recording_enabled:
+                    recorded_frames.extend(frames)
+                if recorded_frames and not self.is_recording_enabled:
+                    self.save_recording_as_mp3(previous_frames + recorded_frames, p)
+                    recorded_frames.clear()
+                if not self.is_recording_enabled:
+                    previous_frames = frames
+                    # Offload processing (recognition) to another thread
+                    threading.Thread(target=self.recognize, args=(frames,)).start()
+
+        except KeyboardInterrupt:
+            print("Stopping...")
+        finally:
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+
+    def save_recording_as_mp3(self, frames, p):
+        output_filename = 'data/temp/audio_record.mp3'
+        # Convert `frames` into an AudioSegment object
+        raw_data = b''.join(frames)
+        audio_segment = AudioSegment(data=raw_data, sample_width=p.get_sample_size(pyaudio.paInt16),
+            frame_rate=target_sample_rate, channels=1)
+        # Export the AudioSegment object to an MP3 file
+        audio_segment.export(output_filename, format="mp3")
+        print(f"Recording has been saved to {output_filename}")
+
+    def save_recording(self, frames):
+        output_filename = 'data/temp/audio_record.wav'
+        wf = wave.open(output_filename, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(pyaudio.PyAudio().get_sample_size(pyaudio.paInt16))
+        wf.setframerate(target_sample_rate)
+        wf.writeframes(b''.join(frames))
+        wf.close()
+        print(f"Recording has been saved to {output_filename}")
 
 
 if __name__ == '__main__':
