@@ -151,21 +151,21 @@ def load_inputs(directory):
 
 
 if __name__ == '__main__':
-    inputs_dir = '../data/30words_inputs_augmented'
+    inputs_dir = '../data/30words_inputs'
 
-    x_train, x_test, labels_train, labels_test = (
-        load_data('../data/30 words', 0.15, length_seconds=1,
-            use_augmentation=True))
-    save_inputs(inputs_dir, x_train, x_test, labels_train, labels_test)
+    # x_train, x_test, labels_train, labels_test = (
+    #     load_data('../data/30 words', 0.15, length_seconds=1,
+    #         use_augmentation=True))
+    # save_inputs(inputs_dir, x_train, x_test, labels_train, labels_test)
 
-    # x_train, x_test, labels_train, labels_test = load_inputs(inputs_dir)
+    x_train, x_test, labels_train, labels_test = load_inputs(inputs_dir)
 
     input_shape = (x_train.shape[1], x_train.shape[2], 1)
     output_shape = labels_train.shape[1]
     model = create_model(input_shape, output_shape)
     model.summary()
     model = compile_and_fit(model, x_train, x_test, labels_train, labels_test, epochs=12, batch_size=32)
-    save_model(model, '30words.h5')
+    save_model(model, '30words2.h5')
     #
     # predict_directory(directory='../data/eryk_training_2',
     #     model_path='eryk_newnet3.h5', length_seconds=0.5, segregate=False)
